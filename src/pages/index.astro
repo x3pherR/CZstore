@@ -1,19 +1,288 @@
----
-const title = "Astro Node Example";
-const renderedAt = new Date().toISOString();
+﻿---
+import Layout from '../layouts/Layout.astro';
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>{title}</title>
-  </head>
-  <body>
-    <main>
-      <h1>{title}</h1>
-      <p>Rendered by Astro on Node.</p>
-      <time datetime={renderedAt}>{renderedAt}</time>
-    </main>
-  </body>
-</html>
+<Layout title="CZSTORE - Relojes de Exclusividad">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-neutral-800 px-4 md:px-8 py-4 flex justify-between items-center">
+    <span class="text-2xl font-black tracking-widest text-white">CZSTORE</span>
+    <div class="flex items-center gap-3 md:gap-4">
+      <button id="open-admin-btn" class="text-xs text-neutral-400 hover:text-white border border-neutral-800 hover:border-neutral-600 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+        <i class="fa-solid fa-lock text-xs"></i><span>Admin</span>
+      </button>
+      <button id="open-cart-btn" class="relative bg-neutral-900 border border-neutral-800 p-2.5 rounded-full hover:border-yellow-500 transition">
+        <i class="fa-solid fa-cart-shopping text-yellow-500"></i>
+        <span id="cart-badge" class="absolute -top-1 -right-1 bg-yellow-500 text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-8 flex-grow">
+    <section class="text-center py-10 md:py-16 border-b border-neutral-800/80 mb-10">
+      <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight mb-3 uppercase">Relojes de Exclusividad</h1>
+      <p class="text-neutral-400 max-w-xl mx-auto text-sm md:text-base">Catálogo seleccionado en ARS. Compra directa por WhatsApp.</p>
+    </section>
+    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+  </main>
+
+  <!-- Cart Drawer -->
+  <div id="cart-drawer" class="fixed inset-0 bg-black/80 z-50 hidden flex justify-end backdrop-blur-sm">
+    <div class="w-full max-w-md bg-neutral-900 h-full p-6 flex flex-col justify-between border-l border-neutral-800">
+      <div>
+        <div class="flex justify-between items-center border-b border-neutral-800 pb-4 mb-4">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-bag-shopping text-yellow-500"></i> Tu Carrito</h3>
+          <button id="close-cart-btn" class="text-neutral-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+        <div id="cart-items" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
+      </div>
+      <div class="border-t border-neutral-800 pt-4 mt-auto">
+        <div class="flex justify-between text-base font-bold text-white mb-4">
+          <span>Total:</span><span id="cart-total" class="text-yellow-500">$ 0 ARS</span>
+        </div>
+        <button id="checkout-btn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-lg flex items-center justify-center gap-2 transition">
+          <i class="fa-brands fa-whatsapp text-xl"></i> Completar pago por WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="fixed inset-0 bg-black/85 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-neutral-900 border border-neutral-800 w-full max-w-3xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+      <button id="close-detail-btn" class="absolute top-4 right-4 text-neutral-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      <div id="detail-content" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+    </div>
+  </div>
+
+  <!-- Admin Modal -->
+  <div id="admin-modal" class="fixed inset-0 bg-black/85 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-neutral-900 border border-neutral-800 w-full max-w-xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+      <button id="close-admin-btn" class="absolute top-4 right-4 text-neutral-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      
+      <div id="admin-login-view">
+        <h3 class="text-xl font-bold text-white mb-2">Panel Admin</h3>
+        <form id="admin-login-form" class="space-y-4">
+          <input type="text" id="admin-user" placeholder="Usuario" required class="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white">
+          <input type="password" id="admin-pass" placeholder="Contraseña" required class="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white">
+          <p id="admin-error" class="text-red-500 text-xs hidden">Credenciales incorrectas.</p>
+          <button type="submit" class="w-full bg-yellow-500 text-black font-bold py-2.5 rounded-lg">Ingresar</button>
+        </form>
+      </div>
+
+      <div id="admin-dashboard-view" class="hidden">
+        <div class="flex justify-between items-center mb-6 border-b border-neutral-800 pb-4">
+          <h3 class="text-lg font-bold text-white">Panel CZSTORE</h3>
+          <button id="logout-admin-btn" class="text-xs bg-red-950 text-red-300 border border-red-800 px-3 py-1.5 rounded-lg">Cerrar Sesión</button>
+        </div>
+        <form id="save-product-form" class="space-y-4">
+          <input type="text" id="prod-title" placeholder="Nombre del Reloj" required class="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white">
+          <input type="number" id="prod-price" placeholder="Precio ARS" required class="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white">
+          <input type="text" id="prod-colors" placeholder="Variantes (ej: Negro, Plata)" required class="w-full bg-neutral-800 border border-neutral-700 rounded-lg p-2.5 text-sm text-white">
+          <input type="file" id="prod-files" multiple accept="image/*" class="w-full text-xs text-neutral-400 bg-neutral-800 p-2 rounded-lg border border-neutral-700">
+          <button type="submit" class="w-full bg-green-600 text-white font-bold py-2.5 rounded-lg">Guardar Reloj</button>
+        </form>
+        <div class="mt-8 border-t border-neutral-800 pt-6">
+          <h4 class="text-sm font-bold text-white mb-3">Relojes Publicados</h4>
+          <div id="admin-product-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-black border-t border-neutral-900 py-6 text-center text-xs text-neutral-600 mt-12">
+    <p>&copy; CZSTORE - Astro Edition</p>
+  </footer>
+</Layout>
+
+<script>
+  // Lógica del cliente
+  const defaultProducts = [
+    { id: 1, title: "Chronograph Obsidian", price: 185000, colors: ["Negro Matte"], images: ["https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800"] },
+    { id: 2, title: "Automatic Skeleton Gold", price: 240000, colors: ["Oro Rosa"], images: ["https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800"] }
+  ];
+
+  let products = JSON.parse(localStorage.getItem('cz_products')) || defaultProducts;
+  let cart = JSON.parse(localStorage.getItem('cz_cart')) || [];
+  let isAdmin = false;
+
+  function sanitize(str) {
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderProducts() {
+    const grid = document.getElementById('product-grid');
+    if (!grid) return;
+
+    grid.innerHTML = products.map(p => `
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden p-4 flex flex-col justify-between">
+        <img src="${p.images[0]}" class="w-full h-52 object-cover rounded-lg mb-3 cursor-pointer" data-id="${p.id}" action="open-detail">
+        <h3 class="font-bold text-white mb-1">${sanitize(p.title)}</h3>
+        <p class="text-yellow-500 font-bold mb-3">$ ${Number(p.price).toLocaleString('es-AR')} ARS</p>
+        <button data-id="${p.id}" action="add-cart" class="w-full bg-white text-black font-bold py-2 rounded-lg text-xs hover:bg-neutral-200">Agregar al Carrito</button>
+      </div>
+    `).join('');
+
+    localStorage.setItem('cz_products', JSON.stringify(products));
+    renderAdminList();
+  }
+
+  function renderAdminList() {
+    const list = document.getElementById('admin-product-list');
+    if (!list) return;
+    list.innerHTML = products.map(p => `
+      <div class="flex justify-between items-center text-xs text-white bg-neutral-800 p-2.5 rounded-lg">
+        <span>${sanitize(p.title)}</span>
+        <button data-id="${p.id}" action="delete-product" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    `).join('');
+  }
+
+  function updateCart() {
+    localStorage.setItem('cz_cart', JSON.stringify(cart));
+    const badge = document.getElementById('cart-badge');
+    const totalCount = cart.reduce((a, b) => a + b.qty, 0);
+
+    if (badge) {
+      badge.innerText = totalCount;
+      badge.classList.toggle('hidden', totalCount === 0);
+    }
+
+    const itemsEl = document.getElementById('cart-items');
+    if (itemsEl) {
+      itemsEl.innerHTML = cart.length === 0 
+        ? `<p class="text-xs text-neutral-500 text-center py-6">El carrito está vacío.</p>`
+        : cart.map((c, i) => `
+            <div class="flex justify-between items-center text-xs text-white bg-neutral-800 p-2.5 rounded-lg">
+              <div>
+                <p class="font-bold">${sanitize(c.title)}</p>
+                <p class="text-yellow-500">$ ${(c.price * c.qty).toLocaleString('es-AR')} ARS</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button data-idx="${i}" action="qty-minus" class="w-5 h-5 bg-neutral-700 rounded text-center">-</button>
+                <span>${c.qty}</span>
+                <button data-idx="${i}" action="qty-plus" class="w-5 h-5 bg-neutral-700 rounded text-center">+</button>
+              </div>
+            </div>
+          `).join('');
+    }
+
+    const totalEl = document.getElementById('cart-total');
+    if (totalEl) {
+      totalEl.innerText = `$ ${cart.reduce((a, b) => a + (b.price * b.qty), 0).toLocaleString('es-AR')} ARS`;
+    }
+  }
+
+  function addToCart(id) {
+    const p = products.find(i => i.id === Number(id));
+    if (!p) return;
+    const idx = cart.findIndex(c => c.id === p.id);
+    if (idx > -1) cart[idx].qty++;
+    else cart.push({ id: p.id, title: p.title, price: p.price, color: p.colors[0], qty: 1 });
+    updateCart();
+    document.getElementById('cart-drawer')?.classList.remove('hidden');
+  }
+
+  // Event Listeners globales
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[action]');
+    if (!target) return;
+    const action = target.getAttribute('action');
+    const id = target.getAttribute('data-id');
+    const idx = target.getAttribute('data-idx');
+
+    if (action === 'add-cart') addToCart(id);
+    if (action === 'open-detail') {
+      const p = products.find(i => i.id === Number(id));
+      if (!p) return;
+      const content = document.getElementById('detail-content');
+      if (content) {
+        content.innerHTML = `
+          <div><img src="${p.images[0]}" class="w-full h-64 object-cover rounded-lg"></div>
+          <div>
+            <h2 class="text-xl font-bold text-white">${sanitize(p.title)}</h2>
+            <p class="text-yellow-500 font-bold text-xl my-2">$ ${Number(p.price).toLocaleString('es-AR')} ARS</p>
+            <button data-id="${p.id}" action="add-cart" class="w-full bg-yellow-500 text-black font-bold py-2.5 rounded-lg text-xs mt-4">Agregar al Carrito</button>
+          </div>`;
+      }
+      document.getElementById('detail-modal')?.classList.remove('hidden');
+    }
+    if (action === 'qty-plus') { cart[idx].qty++; updateCart(); }
+    if (action === 'qty-minus') {
+      cart[idx].qty--;
+      if (cart[idx].qty <= 0) cart.splice(idx, 1);
+      updateCart();
+    }
+    if (action === 'delete-product' && isAdmin) {
+      products = products.filter(p => p.id !== Number(id));
+      renderProducts();
+    }
+  });
+
+  // Modales y botones
+  document.getElementById('open-cart-btn')?.addEventListener('click', () => document.getElementById('cart-drawer')?.classList.remove('hidden'));
+  document.getElementById('close-cart-btn')?.addEventListener('click', () => document.getElementById('cart-drawer')?.classList.add('hidden'));
+  document.getElementById('close-detail-btn')?.addEventListener('click', () => document.getElementById('detail-modal')?.classList.add('hidden'));
+  document.getElementById('open-admin-btn')?.addEventListener('click', () => document.getElementById('admin-modal')?.classList.remove('hidden'));
+  document.getElementById('close-admin-btn')?.addEventListener('click', () => document.getElementById('admin-modal')?.classList.add('hidden'));
+
+  // Formulario Admin Login
+  document.getElementById('admin-login-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const user = (document.getElementById('admin-user')).value;
+    const pass = (document.getElementById('admin-pass')).value;
+    if (user === 'admin' && pass === 'CZStore2026!') {
+      isAdmin = true;
+      document.getElementById('admin-login-view')?.classList.add('hidden');
+      document.getElementById('admin-dashboard-view')?.classList.remove('hidden');
+      renderAdminList();
+    } else {
+      document.getElementById('admin-error')?.classList.remove('hidden');
+    }
+  });
+
+  document.getElementById('logout-admin-btn')?.addEventListener('click', () => {
+    isAdmin = false;
+    document.getElementById('admin-login-view')?.classList.remove('hidden');
+    document.getElementById('admin-dashboard-view')?.classList.add('hidden');
+    document.getElementById('admin-modal')?.classList.add('hidden');
+  });
+
+  // Guardar nuevo producto
+  document.getElementById('save-product-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    const title = (document.getElementById('prod-title')).value;
+    const price = parseFloat((document.getElementById('prod-price')).value);
+    const colors = (document.getElementById('prod-colors')).value.split(',').map(c => c.trim());
+
+    products.push({
+      id: Date.now(),
+      title,
+      price,
+      colors,
+      images: ["https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800"]
+    });
+
+    renderProducts();
+    alert('Reloj agregado con éxito');
+  });
+
+  // Checkout WhatsApp
+  document.getElementById('checkout-btn')?.addEventListener('click', () => {
+    if (cart.length === 0) return alert('El carrito está vacío.');
+    let msg = "¡Hola CZSTORE! Quiero realizar el siguiente pedido:\n\n";
+    let total = 0;
+    cart.forEach(item => {
+      const subtotal = item.price * item.qty;
+      total += subtotal;
+      msg += `• *${item.title}*\n  - Variante: ${item.color}\n  - Cantidad: ${item.qty}\n  - Subtotal: $ ${subtotal.toLocaleString('es-AR')} ARS\n\n`;
+    });
+    msg += `*Total a pagar: $ ${total.toLocaleString('es-AR')} ARS*`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  });
+
+  // Inicializar
+  renderProducts();
+  updateCart();
+</script>
